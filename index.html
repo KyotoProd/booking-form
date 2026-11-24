@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>New booking</title>
+<script src="https://telegram.org/js/telegram-web-app.js?65"></script>
+<style>
+  /* Colours follow the Telegram theme of whoever opens it (light or dark). The one thing
+     that is ours is the tape label at the top: road-case yellow with black ink. */
+  :root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --ink: var(--tg-theme-text-color, #14171a);
+    --hint: var(--tg-theme-hint-color, #7b8794);
+    --field: var(--tg-theme-secondary-bg-color, #eef1f4);
+    --line: var(--tg-theme-section-separator-color, #d5dae0);
+    --focus: var(--tg-theme-button-color, #1f6feb);
+    --bad: var(--tg-theme-destructive-text-color, #c62828);
+    --tape: #ffd21f;
+    --tape-ink: #141200;
+    --label: "Avenir Next Condensed", "DIN Condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+    --body: -apple-system, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 400 17px/1.4 var(--body);
+    padding: 22px 18px calc(28px + env(safe-area-inset-bottom));
+  }
+  main { max-width: 30rem; margin: 0 auto; }
+
+  .tape {
+    display: inline-block; margin: 2px 0 26px -4px; padding: 9px 16px 8px;
+    background: var(--tape); color: var(--tape-ink);
+    font: 700 1.5rem/1.1 var(--label); letter-spacing: .01em;
+    transform: rotate(-1.2deg); transform-origin: left center;
+    /* the slightly uneven ends of a torn strip of tape */
+    clip-path: polygon(0 6%, 1.5% 0, 98.5% 3%, 100% 12%, 99% 92%, 97.5% 100%, 1% 97%, 0 86%);
+  }
+  .tape small { display: block; font: 600 .95rem/1.25 var(--label); letter-spacing: .02em; opacity: .78; margin-top: 2px; }
+
+  .field { margin: 0 0 18px; }
+  label { display: block; font-weight: 600; font-size: .94rem; margin: 0 0 6px 2px; }
+  label .opt { font-weight: 400; color: var(--hint); }
+  input, textarea {
+    width: 100%; min-height: 48px; padding: 12px 14px;
+    font: inherit; color: var(--ink); background: var(--field);
+    border: 1.5px solid transparent; border-radius: 10px; outline: none;
+    -webkit-appearance: none; appearance: none;
+  }
+  textarea { min-height: 112px; resize: vertical; line-height: 1.35; }
+  input:focus-visible, textarea:focus-visible { border-color: var(--focus); }
+  input::placeholder, textarea::placeholder { color: var(--hint); opacity: 1; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pair .field { margin-bottom: 18px; min-width: 0; }
+  input[type="date"] { min-width: 0; }
+
+  .field.bad input, .field.bad textarea { border-color: var(--bad); }
+  .why { display: none; color: var(--bad); font-size: .88rem; margin: 6px 0 0 2px; }
+  .field.bad .why { display: block; }
+
+  .after { color: var(--hint); font-size: .9rem; margin: 6px 2px 0; padding-top: 14px; border-top: 1px solid var(--line); }
+
+  .outside { display: none; margin: 0 0 22px; padding: 14px 16px; border-radius: 10px; background: var(--field); font-size: .95rem; }
+  body.outside-telegram .outside { display: block; }
+  body.outside-telegram form { opacity: .45; pointer-events: none; }
+
+  .send { display: none; width: 100%; margin-top: 20px; min-height: 50px; border: 0; border-radius: 10px;
+          background: var(--focus); color: var(--tg-theme-button-text-color, #fff); font: 600 1rem var(--body); }
+  body.no-main-button .send { display: block; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .tape { transition: transform .18s ease; }
+    .tape.changed { transform: rotate(-.2deg) scale(1.015); }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="tape" id="tape" aria-live="polite">New booking<small id="tapeSub">Pick the dates below</small></div>
+
+  <p class="outside">This form only works inside Telegram. Open it with the <b>New booking</b> button in your chat with the bot.</p>
+
+  <form id="form" novalidate>
+    <div class="field" id="f-client">
+      <label for="client">Who is it for?</label>
+      <input id="client" name="client" type="text" autocomplete="off" autocapitalize="words" maxlength="80" placeholder="Client or company name">
+      <p class="why">Add who it is for.</p>
+    </div>
+
+    <div class="pair">
+      <div class="field" id="f-out">
+        <label for="out">Goes out</label>
+        <input id="out" name="out" type="date">
+        <p class="why">Pick the day it goes out.</p>
+      </div>
+      <div class="field" id="f-back">
+        <label for="back">Comes back</label>
+        <input id="back" name="back" type="date">
+        <p class="why" id="backWhy">Pick the day it comes back.</p>
+      </div>
+    </div>
+
+    <div class="field" id="f-name">
+      <label for="name">Job name</label>
+      <input id="name" name="name" type="text" autocomplete="off" autocapitalize="sentences" maxlength="100" placeholder="What the job should be called">
+      <p class="why">Give the job a name.</p>
+    </div>
+
+    <div class="field" id="f-notes">
+      <label for="notes">Notes <span class="opt">(optional)</span></label>
+      <textarea id="notes" name="notes" maxlength="1200" placeholder="Paste the client's message, or anything worth keeping with the job"></textarea>
+    </div>
+
+    <p class="after">Nothing is created yet. The bot shows the booking back to you in the chat, and you press Create there.</p>
+    <button class="send" type="submit">Send to the bot</button>
+  </form>
+</main>
+
+<script>
+(function () {
+  var tg = window.Telegram && window.Telegram.WebApp;
+  var inTelegram = !!(tg && tg.platform && tg.platform !== 'unknown');
+  var $ = function (id) { return document.getElementById(id); };
+  var form = $('form'), out = $('out'), back = $('back'), tape = $('tape'), tapeSub = $('tapeSub');
+
+  var iso = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  var asDate = function (s) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); if (!m) return null; var d = new Date(+m[1], +m[2] - 1, +m[3]); return d.getMonth() === +m[2] - 1 ? d : null; };
+  var say = function (d) { return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : ''); };
+
+  var today = iso(new Date());
+  out.value = today; back.value = today; back.min = today;
+
+  function redrawTape() {
+    var a = asDate(out.value), b = asDate(back.value);
+    var first = tape.firstChild;
+    if (a && b && b >= a) {
+      var days = Math.round((b - a) / 86400000) + 1;
+      first.nodeValue = a.getTime() === b.getTime() ? say(a) : say(a) + ' to ' + say(b);
+      tapeSub.textContent = days === 1 ? 'Out and back the same day' : days + ' days';
+    } else {
+      first.nodeValue = 'New booking';
+      tapeSub.textContent = a && b ? 'It comes back before it goes out' : 'Pick the dates below';
+    }
+    tape.classList.add('changed'); setTimeout(function () { tape.classList.remove('changed'); }, 200);
+  }
+  out.addEventListener('change', function () {
+    back.min = out.value || '';
+    if (out.value && (!back.value || back.value < out.value)) back.value = out.value;
+    redrawTape();
+  });
+  back.addEventListener('change', redrawTape);
+  redrawTape();
+
+  function mark(id, bad) { $(id).classList.toggle('bad', bad); return bad; }
+  function check() {
+    var a = asDate(out.value), b = asDate(back.value), firstBad = null;
+    var bad = [
+      ['f-client', $('client').value.trim().length < 2],
+      ['f-out', !a],
+      ['f-back', !b || (a && b < a)],
+      ['f-name', $('name').value.trim().length < 2]
+    ];
+    $('backWhy').textContent = b && a && b < a ? 'It comes back before it goes out.' : 'Pick the day it comes back.';
+    bad.forEach(function (x) { if (mark(x[0], x[1]) && !firstBad) firstBad = x[0]; });
+    if (firstBad) { var el = $(firstBad).querySelector('input, textarea'); el.focus(); el.scrollIntoView({ block: 'center' }); }
+    return !firstBad;
+  }
+  ['client', 'name', 'out', 'back'].forEach(function (id) {
+    $(id).addEventListener('input', function () { $('f-' + id).classList.remove('bad'); });
+  });
+
+  function send() {
+    if (!inTelegram) return;
+    if (!check()) { if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); return; }
+    var payload = { v: 1, client: $('client').value.trim(), out: out.value, back: back.value, name: $('name').value.trim(), notes: $('notes').value.trim() };
+    // Telegram carries at most 4096 bytes back to the bot: shorten the notes if they would not fit.
+    var bytes = function (o) { return new TextEncoder().encode(JSON.stringify(o)).length; };
+    while (bytes(payload) > 3800 && payload.notes.length) payload.notes = payload.notes.slice(0, Math.floor(payload.notes.length * 0.9));
+    tg.sendData(JSON.stringify(payload));
+  }
+  form.addEventListener('submit', function (e) { e.preventDefault(); send(); });
+
+  if (!inTelegram) { document.body.classList.add('outside-telegram'); return; }
+  tg.ready(); tg.expand();
+  var button = tg.MainButton || tg.BottomButton;
+  if (button && button.setText) { button.setText('Send to the bot'); button.onClick(send); button.show(); }
+  else document.body.classList.add('no-main-button');
+})();
+</script>
+</body>
+</html>
